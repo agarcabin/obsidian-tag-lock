@@ -9,6 +9,7 @@ import {
 	Setting,
 	TFile,
 } from "obsidian";
+import type { SettingDefinitionItem } from "obsidian";
 
 type LanguageMode = "auto" | "zh" | "en";
 type UiLanguage = "zh" | "en";
@@ -1181,6 +1182,231 @@ class PrivacyGuardSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: PrivacyGuardPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		if (this.isSettingsLocked()) {
+			return [{
+				type: "group",
+				heading: this.plugin.t("tagLock"),
+				items: [{
+					name: this.plugin.t("settingsLocked"),
+					desc: this.plugin.t("settingsReason"),
+					render: (setting: Setting) => {
+						setting.addButton((button) => button
+							.setButtonText(this.plugin.t("unlockButton"))
+							.setCta()
+							.onClick(async () => {
+								if (await this.plugin.requestUnlock(this.plugin.t("settingsReason"), false)) this.update();
+							}));
+					},
+				}],
+			}];
+		}
+
+		const toggle = (name: string, desc: string, key: string, defaultValue: boolean) => ({
+			name,
+			desc,
+			control: { type: "toggle" as const, key, defaultValue },
+		});
+		const dropdown = (name: string, desc: string, key: string, options: Record<string, string>, defaultValue: string) => ({
+			name,
+			desc,
+			control: { type: "dropdown" as const, key, options, defaultValue },
+		});
+		const textArea = (name: string, desc: string, key: string, defaultValue: string) => ({
+			name,
+			desc,
+			control: { type: "textarea" as const, key, rows: 3, defaultValue },
+		});
+		const text = (name: string, desc: string, key: string, defaultValue: string) => ({
+			name,
+			desc,
+			control: { type: "text" as const, key, defaultValue },
+		});
+
+		return [
+			{
+				type: "group",
+				heading: this.plugin.t("categoryPreferences"),
+				items: [
+					toggle(this.plugin.t("protectionEnabledName"), this.plugin.t("protectionEnabledDesc"), "protectionEnabled", DEFAULT_SETTINGS.protectionEnabled),
+					dropdown(this.plugin.t("languageName"), this.plugin.t("languageDesc"), "language", {
+						auto: this.plugin.t("languageAuto"),
+						zh: this.plugin.t("languageChinese"),
+						en: this.plugin.t("languageEnglish"),
+					}, DEFAULT_SETTINGS.language),
+				],
+			},
+			{
+				type: "group",
+				heading: this.plugin.t("categoryProtectionRules"),
+				items: [
+					textArea(this.plugin.t("protectedTagsName"), this.plugin.t("protectedTagsDesc"), "protectedTags", DEFAULT_SETTINGS.protectedTags.join("\n")),
+					textArea(this.plugin.t("protectedFoldersName"), this.plugin.t("protectedFoldersDesc"), "protectedFolders", DEFAULT_SETTINGS.protectedFolders.join("\n")),
+					toggle(this.plugin.t("tagNamedLinksName"), this.plugin.t("tagNamedLinksDesc"), "protectTagNamedLinks", DEFAULT_SETTINGS.protectTagNamedLinks),
+					toggle(this.plugin.t("tagNamedPagesName"), this.plugin.t("tagNamedPagesDesc"), "protectTagNamedPages", DEFAULT_SETTINGS.protectTagNamedPages),
+					toggle(this.plugin.t("searchProtectionName"), this.plugin.t("searchProtectionDesc"), "protectSearch", DEFAULT_SETTINGS.protectSearch),
+					toggle(this.plugin.t("previewProtectionName"), this.plugin.t("previewProtectionDesc"), "protectPreview", DEFAULT_SETTINGS.protectPreview),
+					toggle(this.plugin.t("settingsProtectionName"), this.plugin.t("settingsProtectionDesc"), "protectSettings", DEFAULT_SETTINGS.protectSettings),
+				],
+			},
+			{
+				type: "group",
+				heading: this.plugin.t("categoryUnlockRules"),
+				items: [
+					dropdown(this.plugin.t("authMethodName"), this.plugin.t("authMethodDesc"), "authMethod", {
+						password: this.plugin.t("authPassword"),
+						pattern: this.plugin.t("authPattern"),
+					}, DEFAULT_SETTINGS.authMethod),
+					{
+						name: this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential"),
+						desc: this.plugin.t("credentialSettingDesc"),
+						render: (setting: Setting) => {
+							setting
+								.addButton((button) => button
+									.setButtonText(this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential"))
+									.setCta()
+									.onClick(() => new CredentialSetupModal(this.app, this.plugin).open()))
+								.addButton((button) => button
+									.setButtonText(this.plugin.t("resetAllCredentials"))
+									.setDestructive()
+									.onClick(() => new ResetCredentialsConfirmModal(this.app, this.plugin, () => {
+										void this.plugin.resetAllCredentials().then(() => {
+											new Notice(this.plugin.t("resetAllCredentialsDone"));
+											this.update();
+										});
+									}).open()));
+						},
+					},
+					text(this.plugin.t("passwordHintName"), this.plugin.t("passwordHintDesc"), "passwordHint", DEFAULT_SETTINGS.passwordHint),
+					toggle(this.plugin.t("unlockOnCorrectCredentialName"), this.plugin.t("unlockOnCorrectCredentialDesc"), "unlockOnCorrectCredential", DEFAULT_SETTINGS.unlockOnCorrectCredential),
+					dropdown(this.plugin.t("failureActionName"), this.plugin.t("failureActionDesc"), "failureAction", {
+						previous: this.plugin.t("failurePrevious"),
+						close: this.plugin.t("failureClose"),
+						none: this.plugin.t("failureNone"),
+					}, DEFAULT_SETTINGS.failureAction),
+				],
+			},
+			{
+				type: "group",
+				heading: this.plugin.t("categoryLockRules"),
+				items: [
+					{
+						name: this.plugin.t("unlockDurationName"),
+						desc: this.plugin.t("unlockDurationDesc"),
+						control: { type: "number" as const, key: "unlockMinutes", min: 0, defaultValue: DEFAULT_SETTINGS.unlockMinutes },
+					},
+					toggle(this.plugin.t("lockRestartName"), this.plugin.t("lockRestartDesc"), "lockOnRestart", DEFAULT_SETTINGS.lockOnRestart),
+					toggle(this.plugin.t("lockBackgroundName"), this.plugin.t("lockBackgroundDesc"), "lockOnBackground", DEFAULT_SETTINGS.lockOnBackground),
+					toggle(this.plugin.t("forcePasswordEveryAccessName"), this.plugin.t("forcePasswordEveryAccessDesc"), "forcePasswordEveryAccess", DEFAULT_SETTINGS.forcePasswordEveryAccess),
+				],
+			},
+		];
+	}
+
+	getControlValue(key: string): unknown {
+		switch (key) {
+			case "protectedTags": return this.plugin.settings.protectedTags.join("\n");
+			case "protectedFolders": return this.plugin.settings.protectedFolders.join("\n");
+			case "unlockMinutes": return this.plugin.settings.unlockMinutes;
+			case "protectionEnabled": return this.plugin.settings.protectionEnabled;
+			case "language": return this.plugin.settings.language;
+			case "protectTagNamedLinks": return this.plugin.settings.protectTagNamedLinks;
+			case "protectTagNamedPages": return this.plugin.settings.protectTagNamedPages;
+			case "protectSearch": return this.plugin.settings.protectSearch;
+			case "protectPreview": return this.plugin.settings.protectPreview;
+			case "protectSettings": return this.plugin.settings.protectSettings;
+			case "authMethod": return this.plugin.settings.authMethod;
+			case "passwordHint": return this.plugin.settings.passwordHint;
+			case "unlockOnCorrectCredential": return this.plugin.settings.unlockOnCorrectCredential;
+			case "failureAction": return this.plugin.settings.failureAction;
+			case "lockOnRestart": return this.plugin.settings.lockOnRestart;
+			case "lockOnBackground": return this.plugin.settings.lockOnBackground;
+			case "forcePasswordEveryAccess": return this.plugin.settings.forcePasswordEveryAccess;
+			default: return undefined;
+		}
+	}
+
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		switch (key) {
+			case "protectedTags":
+				if (typeof value !== "string") return;
+				this.plugin.settings.protectedTags = value.split(/\r?\n/);
+				break;
+			case "protectedFolders":
+				if (typeof value !== "string") return;
+				this.plugin.settings.protectedFolders = value.split(/\r?\n/);
+				break;
+			case "unlockMinutes":
+				if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return;
+				this.plugin.settings.unlockMinutes = Math.floor(value);
+				break;
+			case "protectionEnabled":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.protectionEnabled = value;
+				break;
+			case "language":
+				if (value !== "auto" && value !== "zh" && value !== "en") return;
+				this.plugin.settings.language = value;
+				break;
+			case "protectTagNamedLinks":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.protectTagNamedLinks = value;
+				break;
+			case "protectTagNamedPages":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.protectTagNamedPages = value;
+				break;
+			case "protectSearch":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.protectSearch = value;
+				break;
+			case "protectPreview":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.protectPreview = value;
+				break;
+			case "protectSettings":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.protectSettings = value;
+				break;
+			case "authMethod":
+				if (value !== "password" && value !== "pattern") return;
+				this.plugin.settings.authMethod = value;
+				break;
+			case "passwordHint":
+				if (typeof value !== "string") return;
+				this.plugin.settings.passwordHint = value.trim();
+				break;
+			case "unlockOnCorrectCredential":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.unlockOnCorrectCredential = value;
+				break;
+			case "failureAction":
+				if (value !== "previous" && value !== "close" && value !== "none") return;
+				this.plugin.settings.failureAction = value;
+				break;
+			case "lockOnRestart":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.lockOnRestart = value;
+				break;
+			case "lockOnBackground":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.lockOnBackground = value;
+				break;
+			case "forcePasswordEveryAccess":
+				if (typeof value !== "boolean") return;
+				this.plugin.settings.forcePasswordEveryAccess = value;
+				break;
+			default:
+				return;
+		}
+		await this.plugin.saveSettings();
+		this.update();
+	}
+
+	private isSettingsLocked(): boolean {
+		return this.plugin.settings.protectionEnabled && this.plugin.settings.protectSettings && this.plugin.hasCredential() && !this.plugin.isUnlocked();
 	}
 
 	display(): void {
