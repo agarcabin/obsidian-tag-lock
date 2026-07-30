@@ -161,13 +161,18 @@ function uniqueStrings(values, normalizer) {
   return result;
 }
 function randomSalt() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return bytesToHex(window.crypto.getRandomValues(new Uint8Array(16)));
 }
 async function hashPassword(password, salt) {
   const input = new TextEncoder().encode(`${salt}:${password}`);
-  const digest = await crypto.subtle.digest("SHA-256", input);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const digest = await window.crypto.subtle.digest("SHA-256", input);
+  return bytesToHex(new Uint8Array(digest));
+}
+function bytesToHex(bytes) {
+  let result = "";
+  for (const byte of bytes)
+    result += byte.toString(16).padStart(2, "0");
+  return result;
 }
 var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
   constructor() {
@@ -387,7 +392,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     if (this.promptOpeningTimes.length < 3)
       return false;
     this.promptOpeningTimes = [];
-    (_a = this.app.workspace.activeLeaf) == null ? void 0 : _a.detach();
+    (_a = this.app.workspace.getMostRecentLeaf()) == null ? void 0 : _a.detach();
     new import_obsidian.Notice(this.t("rapidPromptClose"));
     return true;
   }
@@ -405,13 +410,18 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     const prompt = new Promise((resolve) => {
       new UnlockModal(this.app, this, reason, resolve).open();
     });
-    this.promptPromise = prompt.then((result) => {
-      if (!result && applyFailureAction)
-        this.applyFailureAction();
-      return result;
-    }).finally(() => {
-      this.promptPromise = null;
-    });
+    this.promptPromise = prompt.then(
+      (result) => {
+        if (!result && applyFailureAction)
+          this.applyFailureAction();
+        this.promptPromise = null;
+        return result;
+      },
+      (error) => {
+        this.promptPromise = null;
+        throw error;
+      }
+    );
     return this.promptPromise;
   }
   toStoredData() {
@@ -478,7 +488,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
   applyFailureAction() {
     var _a;
     if (this.settings.failureAction === "close") {
-      (_a = this.app.workspace.activeLeaf) == null ? void 0 : _a.detach();
+      (_a = this.app.workspace.getMostRecentLeaf()) == null ? void 0 : _a.detach();
       return;
     }
     if (this.settings.failureAction === "previous" && this.previousOpenedPath) {
@@ -509,26 +519,18 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     container.classList.add("privacy-guard-relative");
     let overlay = container.querySelector(".privacy-guard-view-overlay");
     if (!overlay) {
-      overlay = document.createElement("div");
-      overlay.className = "privacy-guard-view-overlay";
-      overlay.setAttribute("aria-label", this.t("pageLocked"));
-      const card = document.createElement("div");
-      card.className = "privacy-guard-lock-card";
-      const title = document.createElement("h3");
-      title.textContent = this.t("pageLocked");
-      const description2 = document.createElement("p");
-      description2.className = "privacy-guard-lock-path";
-      description2.textContent = path;
-      const button = document.createElement("button");
-      button.className = "mod-cta";
-      button.textContent = this.t("unlockButton");
+      const createdOverlay = container.createDiv({ cls: "privacy-guard-view-overlay", attr: { "aria-label": this.t("pageLocked") } });
+      const card = createdOverlay.createDiv({ cls: "privacy-guard-lock-card" });
+      const title = card.createEl("h3", { text: this.t("pageLocked") });
+      const description2 = card.createEl("p", { cls: "privacy-guard-lock-path", text: path });
+      const button = card.createEl("button", { cls: "mod-cta", text: this.t("unlockButton") });
       button.addEventListener("click", () => {
         void this.requestUnlock(this.t("pageOpenReason")).then(() => this.refreshActiveView());
       });
-      card.append(title, description2, button);
-      overlay.appendChild(card);
-      container.appendChild(overlay);
+      overlay = createdOverlay;
     }
+    if (!overlay)
+      return;
     const description = overlay.querySelector(".privacy-guard-lock-path");
     if (description)
       description.textContent = path;
@@ -562,19 +564,13 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     if (element.querySelector(".privacy-guard-preview-overlay"))
       return;
     element.classList.add("privacy-guard-preview-relative");
-    const overlay = document.createElement("div");
-    overlay.className = "privacy-guard-preview-overlay";
-    const label = document.createElement("span");
-    label.textContent = this.t("protectedPreview");
-    const button = document.createElement("button");
-    button.className = "mod-cta";
-    button.textContent = this.t("enterPassword");
+    const overlay = element.createDiv({ cls: "privacy-guard-preview-overlay" });
+    overlay.createSpan({ text: this.t("protectedPreview") });
+    const button = overlay.createEl("button", { cls: "mod-cta", text: this.t("enterPassword") });
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       void this.requestUnlock(this.t("protectedPreview")).then(() => this.refreshPreviewOverlays());
     });
-    overlay.append(label, button);
-    element.appendChild(overlay);
   }
   refreshPreviewOverlays() {
     const locked = this.settings.protectionEnabled && this.settings.protectPreview && !this.isUnlocked();
@@ -643,19 +639,13 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     container.classList.add("privacy-guard-backlink-relative");
     if (container.querySelector(".privacy-guard-backlink-overlay"))
       return;
-    const overlay = document.createElement("div");
-    overlay.className = "privacy-guard-backlink-overlay";
-    const label = document.createElement("span");
-    label.textContent = this.t("protectedBacklinks");
-    const button = document.createElement("button");
-    button.className = "mod-cta";
-    button.textContent = this.t("enterPassword");
+    const overlay = container.createDiv({ cls: "privacy-guard-backlink-overlay" });
+    overlay.createSpan({ text: this.t("protectedBacklinks") });
+    const button = overlay.createEl("button", { cls: "mod-cta", text: this.t("enterPassword") });
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       void this.requestUnlock(this.t("protectedBacklinks")).then(() => this.refreshBacklinkOverlays());
     });
-    overlay.append(label, button);
-    container.appendChild(overlay);
   }
   removeBacklinkOverlay(container) {
     var _a;
@@ -731,10 +721,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
       const target = row != null ? row : element;
       target.classList.add("privacy-guard-search-blocked");
       if (!target.querySelector(".privacy-guard-search-badge")) {
-        const badge = document.createElement("span");
-        badge.className = "privacy-guard-search-badge";
-        badge.textContent = this.t("passwordRequired");
-        target.appendChild(badge);
+        target.createSpan({ cls: "privacy-guard-search-badge", text: this.t("passwordRequired") });
       }
     });
   }
@@ -789,33 +776,24 @@ var PatternInput = class {
     this.pattern = [];
     this.drawing = false;
     this.onComplete = onComplete;
-    const wrapper = document.createElement("div");
-    wrapper.className = "tag-lock-pattern-wrapper";
-    const hintEl = document.createElement("p");
-    hintEl.className = "tag-lock-pattern-hint";
-    hintEl.textContent = hint;
-    this.board = document.createElement("div");
-    this.board.className = "tag-lock-pattern-board";
-    this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    this.svg.classList.add("tag-lock-pattern-lines");
-    this.svg.setAttribute("viewBox", "0 0 300 300");
-    this.svg.setAttribute("aria-hidden", "true");
-    this.board.appendChild(this.svg);
+    const wrapper = parent.createDiv({ cls: "tag-lock-pattern-wrapper" });
+    wrapper.createEl("p", { cls: "tag-lock-pattern-hint", text: hint });
+    this.board = wrapper.createDiv({ cls: "tag-lock-pattern-board" });
+    this.svg = this.board.createSvg("svg", {
+      cls: "tag-lock-pattern-lines",
+      attr: { viewBox: "0 0 300 300", "aria-hidden": "true" }
+    });
     for (let index = 0; index < 9; index++) {
-      const node = document.createElement("button");
-      node.type = "button";
-      node.className = "tag-lock-pattern-node";
-      node.dataset.index = String(index);
-      node.setAttribute("aria-label", String(index + 1));
+      const node = this.board.createEl("button", {
+        cls: "tag-lock-pattern-node",
+        attr: { type: "button", "data-index": String(index), "aria-label": String(index + 1) }
+      });
       this.nodes.push(node);
-      this.board.appendChild(node);
     }
     this.board.addEventListener("pointerdown", (event) => this.start(event));
     this.board.addEventListener("pointermove", (event) => this.move(event));
     this.board.addEventListener("pointerup", (event) => this.end(event));
     this.board.addEventListener("pointercancel", (event) => this.end(event));
-    wrapper.append(hintEl, this.board);
-    parent.appendChild(wrapper);
   }
   getPattern() {
     return [...this.pattern];
@@ -866,7 +844,7 @@ var PatternInput = class {
         nearest = index;
       }
     }
-    if (nearest < 0 || distance > Math.min(cellWidth, cellHeight) * 0.42 || this.pattern.includes(nearest))
+    if (nearest < 0 || distance > Math.min(cellWidth, cellHeight) * 0.42 || this.pattern.indexOf(nearest) >= 0)
       return;
     this.pattern.push(nearest);
     this.nodes[nearest].classList.add("is-selected");
@@ -877,11 +855,8 @@ var PatternInput = class {
       this.svg.removeChild(this.svg.firstChild);
     if (this.pattern.length < 2)
       return;
-    const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
     const points = this.pattern.map((index) => `${(index % 3 + 0.5) * 100},${(Math.floor(index / 3) + 0.5) * 100}`).join(" ");
-    polyline.setAttribute("points", points);
-    polyline.classList.add("tag-lock-pattern-polyline");
-    this.svg.appendChild(polyline);
+    this.svg.createSvg("polyline", { cls: "tag-lock-pattern-polyline", attr: { points } });
   }
 };
 var UnlockModal = class extends import_obsidian.Modal {
@@ -897,7 +872,7 @@ var UnlockModal = class extends import_obsidian.Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: this.plugin.t("needPassword") });
+    new import_obsidian.Setting(contentEl).setName(this.plugin.t("needPassword")).setHeading();
     contentEl.createEl("p", { text: this.reason });
     const hint = this.plugin.settings.passwordHint.trim();
     if (hint)
@@ -1059,7 +1034,7 @@ var CredentialSetupModal = class extends import_obsidian.Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential") });
+    new import_obsidian.Setting(contentEl).setName(this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential")).setHeading();
     if (this.plugin.settings.authMethod === "pattern") {
       this.renderPatternSetup(contentEl);
       return;
@@ -1109,25 +1084,52 @@ var CredentialSetupModal = class extends import_obsidian.Modal {
     cancel.addEventListener("click", () => this.close());
   }
 };
+var ResetCredentialsConfirmModal = class extends import_obsidian.Modal {
+  constructor(app, plugin, onConfirm) {
+    super(app);
+    this.plugin = plugin;
+    this.onConfirm = onConfirm;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    new import_obsidian.Setting(contentEl).setName(this.plugin.t("resetAllCredentials")).setHeading();
+    contentEl.createEl("p", { text: this.plugin.t("resetAllCredentialsConfirm") });
+    const actions = contentEl.createDiv("tag-lock-modal-actions");
+    const cancel = actions.createEl("button", { text: this.plugin.t("cancel") });
+    const confirm = actions.createEl("button", { text: this.plugin.t("resetAllCredentials"), cls: "mod-warning" });
+    cancel.addEventListener("click", () => this.close());
+    confirm.addEventListener("click", () => {
+      this.close();
+      this.onConfirm();
+    });
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
 var PrivacyGuardSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
   display() {
+    this.render();
+  }
+  render() {
     const { containerEl } = this;
     containerEl.empty();
     if (this.plugin.settings.protectionEnabled && this.plugin.settings.protectSettings && this.plugin.hasCredential() && !this.plugin.isUnlocked()) {
       this.renderLockedSettings(containerEl);
       return;
     }
-    containerEl.createEl("h2", { text: this.plugin.t("tagLock") });
+    new import_obsidian.Setting(containerEl).setName(this.plugin.t("tagLock")).setHeading();
     this.addHeading(containerEl, "categoryPreferences");
     this.addToggle(containerEl, this.plugin.t("protectionEnabledName"), this.plugin.t("protectionEnabledDesc"), "protectionEnabled");
     new import_obsidian.Setting(containerEl).setName(this.plugin.t("languageName")).setDesc(this.plugin.t("languageDesc")).addDropdown((dropdown) => dropdown.addOption("auto", this.plugin.t("languageAuto")).addOption("zh", this.plugin.t("languageChinese")).addOption("en", this.plugin.t("languageEnglish")).setValue(this.plugin.settings.language).onChange(async (value) => {
       this.plugin.settings.language = value;
       await this.plugin.saveSettings();
-      this.display();
+      this.render();
     }));
     this.addHeading(containerEl, "categoryProtectionRules");
     this.addTextArea(containerEl, "protectedTagsName", "protectedTagsDesc", "protectedTags");
@@ -1141,15 +1143,14 @@ var PrivacyGuardSettingTab = class extends import_obsidian.PluginSettingTab {
     new import_obsidian.Setting(containerEl).setName(this.plugin.t("authMethodName")).setDesc(this.plugin.t("authMethodDesc")).addDropdown((dropdown) => dropdown.addOption("password", this.plugin.t("authPassword")).addOption("pattern", this.plugin.t("authPattern")).setValue(this.plugin.settings.authMethod).onChange(async (value) => {
       this.plugin.settings.authMethod = value;
       await this.plugin.saveSettings();
-      this.display();
+      this.render();
     }));
-    new import_obsidian.Setting(containerEl).setName(this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential")).setDesc(this.plugin.t("credentialSettingDesc")).addButton((button) => button.setButtonText(this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential")).setCta().onClick(() => new CredentialSetupModal(this.app, this.plugin).open())).addButton((button) => button.setButtonText(this.plugin.t("resetAllCredentials")).setWarning().onClick(async () => {
-      if (!window.confirm(this.plugin.t("resetAllCredentialsConfirm")))
-        return;
-      await this.plugin.resetAllCredentials();
-      new import_obsidian.Notice(this.plugin.t("resetAllCredentialsDone"));
-      this.display();
-    }));
+    new import_obsidian.Setting(containerEl).setName(this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential")).setDesc(this.plugin.t("credentialSettingDesc")).addButton((button) => button.setButtonText(this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential")).setCta().onClick(() => new CredentialSetupModal(this.app, this.plugin).open())).addButton((button) => button.setButtonText(this.plugin.t("resetAllCredentials")).setDestructive().onClick(() => new ResetCredentialsConfirmModal(this.app, this.plugin, () => {
+      void this.plugin.resetAllCredentials().then(() => {
+        new import_obsidian.Notice(this.plugin.t("resetAllCredentialsDone"));
+        this.render();
+      });
+    }).open()));
     new import_obsidian.Setting(containerEl).setName(this.plugin.t("passwordHintName")).setDesc(this.plugin.t("passwordHintDesc")).addText((text) => text.setValue(this.plugin.settings.passwordHint).onChange(async (value) => {
       this.plugin.settings.passwordHint = value.trim();
       await this.plugin.saveSettings();
@@ -1172,11 +1173,11 @@ var PrivacyGuardSettingTab = class extends import_obsidian.PluginSettingTab {
     this.addToggle(containerEl, this.plugin.t("forcePasswordEveryAccessName"), this.plugin.t("forcePasswordEveryAccessDesc"), "forcePasswordEveryAccess");
   }
   renderLockedSettings(container) {
-    container.createEl("h2", { text: this.plugin.t("settingsLocked") });
+    new import_obsidian.Setting(container).setName(this.plugin.t("settingsLocked")).setHeading();
     container.createEl("p", { text: this.plugin.t("settingsReason") });
     new import_obsidian.Setting(container).addButton((button) => button.setButtonText(this.plugin.t("unlockButton")).setCta().onClick(async () => {
       if (await this.plugin.requestUnlock(this.plugin.t("settingsReason"), false))
-        this.display();
+        this.render();
     }));
   }
   addHeading(container, key) {

@@ -50,7 +50,7 @@
 	justify-content: center;
 	min-height: 72px;
 	padding: 16px;
-	background: var(--background-primary);
+	background-color: var(--background-primary);
 	background: color-mix(in srgb, var(--background-primary) 92%, transparent);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);

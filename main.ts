@@ -8,7 +8,6 @@ import {
 	PluginSettingTab,
 	Setting,
 	TFile,
-	WorkspaceLeaf,
 } from "obsidian";
 
 type LanguageMode = "auto" | "zh" | "en";
@@ -188,14 +187,19 @@ function uniqueStrings(values: string[], normalizer: (value: string) => string):
 }
 
 function randomSalt(): string {
-	const bytes = crypto.getRandomValues(new Uint8Array(16));
-	return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+	return bytesToHex(window.crypto.getRandomValues(new Uint8Array(16)));
 }
 
 async function hashPassword(password: string, salt: string): Promise<string> {
 	const input = new TextEncoder().encode(`${salt}:${password}`);
-	const digest = await crypto.subtle.digest("SHA-256", input);
-	return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+	const digest = await window.crypto.subtle.digest("SHA-256", input);
+	return bytesToHex(new Uint8Array(digest));
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+	let result = "";
+	for (const byte of bytes) result += byte.toString(16).padStart(2, "0");
+	return result;
 }
 
 export default class PrivacyGuardPlugin extends Plugin {
@@ -433,7 +437,7 @@ export default class PrivacyGuardPlugin extends Plugin {
 		this.promptOpeningTimes.push(now);
 		if (this.promptOpeningTimes.length < 3) return false;
 		this.promptOpeningTimes = [];
-		this.app.workspace.activeLeaf?.detach();
+		this.app.workspace.getMostRecentLeaf()?.detach();
 		new Notice(this.t("rapidPromptClose"));
 		return true;
 	}
@@ -449,12 +453,17 @@ export default class PrivacyGuardPlugin extends Plugin {
 		const prompt = new Promise<boolean>((resolve) => {
 			new UnlockModal(this.app, this, reason, resolve).open();
 		});
-		this.promptPromise = prompt.then((result) => {
-			if (!result && applyFailureAction) this.applyFailureAction();
-			return result;
-		}).finally(() => {
-			this.promptPromise = null;
-		});
+		this.promptPromise = prompt.then(
+			(result: boolean) => {
+				if (!result && applyFailureAction) this.applyFailureAction();
+				this.promptPromise = null;
+				return result;
+			},
+			(error: unknown) => {
+				this.promptPromise = null;
+				throw error;
+			},
+		);
 		return this.promptPromise;
 	}
 
@@ -524,7 +533,7 @@ export default class PrivacyGuardPlugin extends Plugin {
 
 	private applyFailureAction(): void {
 		if (this.settings.failureAction === "close") {
-			this.app.workspace.activeLeaf?.detach();
+			this.app.workspace.getMostRecentLeaf()?.detach();
 			return;
 		}
 		if (this.settings.failureAction === "previous" && this.previousOpenedPath) {
@@ -543,7 +552,7 @@ export default class PrivacyGuardPlugin extends Plugin {
 		for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
 			const view = leaf.view as MarkdownView;
 			const file = view.file;
-			const container = (view.containerEl.querySelector(".view-content") as HTMLElement | null) ?? view.containerEl;
+			const container = view.containerEl.querySelector<HTMLElement>(".view-content") ?? view.containerEl;
 			if ((locked || this.forcePromptPath === file?.path) && this.settings.protectionEnabled && file && this.isProtectedFile(file)) {
 				this.showViewLock(container, file.path);
 			} else {
@@ -554,29 +563,20 @@ export default class PrivacyGuardPlugin extends Plugin {
 
 	private showViewLock(container: HTMLElement, path: string): void {
 		container.classList.add("privacy-guard-relative");
-		let overlay = container.querySelector(".privacy-guard-view-overlay") as HTMLElement | null;
+		let overlay = container.querySelector<HTMLElement>(".privacy-guard-view-overlay");
 		if (!overlay) {
-			overlay = document.createElement("div");
-			overlay.className = "privacy-guard-view-overlay";
-			overlay.setAttribute("aria-label", this.t("pageLocked"));
-			const card = document.createElement("div");
-			card.className = "privacy-guard-lock-card";
-			const title = document.createElement("h3");
-			title.textContent = this.t("pageLocked");
-			const description = document.createElement("p");
-			description.className = "privacy-guard-lock-path";
-			description.textContent = path;
-			const button = document.createElement("button");
-			button.className = "mod-cta";
-			button.textContent = this.t("unlockButton");
+			const createdOverlay = container.createDiv({ cls: "privacy-guard-view-overlay", attr: { "aria-label": this.t("pageLocked") } });
+			const card = createdOverlay.createDiv({ cls: "privacy-guard-lock-card" });
+			const title = card.createEl("h3", { text: this.t("pageLocked") });
+			const description = card.createEl("p", { cls: "privacy-guard-lock-path", text: path });
+			const button = card.createEl("button", { cls: "mod-cta", text: this.t("unlockButton") });
 			button.addEventListener("click", () => {
 				void this.requestUnlock(this.t("pageOpenReason")).then(() => this.refreshActiveView());
 			});
-			card.append(title, description, button);
-			overlay.appendChild(card);
-			container.appendChild(overlay);
+			overlay = createdOverlay;
 		}
-		const description = overlay.querySelector(".privacy-guard-lock-path") as HTMLElement | null;
+		if (!overlay) return;
+		const description = overlay.querySelector<HTMLElement>(".privacy-guard-lock-path");
 		if (description) description.textContent = path;
 	}
 
@@ -609,19 +609,13 @@ export default class PrivacyGuardPlugin extends Plugin {
 	private addPreviewOverlay(element: HTMLElement): void {
 		if (element.querySelector(".privacy-guard-preview-overlay")) return;
 		element.classList.add("privacy-guard-preview-relative");
-		const overlay = document.createElement("div");
-		overlay.className = "privacy-guard-preview-overlay";
-		const label = document.createElement("span");
-		label.textContent = this.t("protectedPreview");
-		const button = document.createElement("button");
-		button.className = "mod-cta";
-		button.textContent = this.t("enterPassword");
-		button.addEventListener("click", (event) => {
+		const overlay = element.createDiv({ cls: "privacy-guard-preview-overlay" });
+		overlay.createSpan({ text: this.t("protectedPreview") });
+		const button = overlay.createEl("button", { cls: "mod-cta", text: this.t("enterPassword") });
+		button.addEventListener("click", (event: MouseEvent) => {
 			event.stopPropagation();
 			void this.requestUnlock(this.t("protectedPreview")).then(() => this.refreshPreviewOverlays());
 		});
-		overlay.append(label, button);
-		element.appendChild(overlay);
 	}
 
 	private refreshPreviewOverlays(): void {
@@ -688,19 +682,13 @@ export default class PrivacyGuardPlugin extends Plugin {
 	private addBacklinkOverlay(container: HTMLElement): void {
 		container.classList.add("privacy-guard-backlink-relative");
 		if (container.querySelector(".privacy-guard-backlink-overlay")) return;
-		const overlay = document.createElement("div");
-		overlay.className = "privacy-guard-backlink-overlay";
-		const label = document.createElement("span");
-		label.textContent = this.t("protectedBacklinks");
-		const button = document.createElement("button");
-		button.className = "mod-cta";
-		button.textContent = this.t("enterPassword");
-		button.addEventListener("click", (event) => {
+		const overlay = container.createDiv({ cls: "privacy-guard-backlink-overlay" });
+		overlay.createSpan({ text: this.t("protectedBacklinks") });
+		const button = overlay.createEl("button", { cls: "mod-cta", text: this.t("enterPassword") });
+		button.addEventListener("click", (event: MouseEvent) => {
 			event.stopPropagation();
 			void this.requestUnlock(this.t("protectedBacklinks")).then(() => this.refreshBacklinkOverlays());
 		});
-		overlay.append(label, button);
-		container.appendChild(overlay);
 	}
 
 	private removeBacklinkOverlay(container: HTMLElement): void {
@@ -742,14 +730,14 @@ export default class PrivacyGuardPlugin extends Plugin {
 	private inspectSearchResults(container: HTMLElement): void {
 		if (!this.settings.protectionEnabled || !this.settings.protectSearch || this.isUnlocked()) return;
 		const paths = new Set<string>();
-		container.querySelectorAll("[data-path]").forEach((element) => {
+		container.querySelectorAll<HTMLElement>("[data-path]").forEach((element) => {
 			const path = element.getAttribute("data-path");
 			if (!path) return;
 			const file = this.getFileByPath(path);
 			if (file && this.isProtectedFile(file)) paths.add(file.path);
 		});
 		if (paths.size === 0) return;
-		const queryInput = container.querySelector("input.search-input, input[type='search']") as HTMLInputElement | null;
+		const queryInput = container.querySelector<HTMLInputElement>("input.search-input, input[type='search']");
 		const query = queryInput?.value.trim() ?? "";
 		const key = `${query}|${Array.from(paths).sort().join("|")}`;
 		if (this.searchPromptKeys.has(key)) return;
@@ -764,17 +752,14 @@ export default class PrivacyGuardPlugin extends Plugin {
 	}
 
 	private blockSearchResults(container: HTMLElement, paths: Set<string>): void {
-		container.querySelectorAll("[data-path]").forEach((element) => {
+		container.querySelectorAll<HTMLElement>("[data-path]").forEach((element) => {
 			const path = element.getAttribute("data-path");
 			if (!path || !paths.has(path)) return;
-			const row = element.closest(".tree-item, .search-result-file-title") as HTMLElement | null;
-			const target = row ?? (element as HTMLElement);
+			const row = element.closest<HTMLElement>(".tree-item, .search-result-file-title");
+			const target = row ?? element;
 			target.classList.add("privacy-guard-search-blocked");
 			if (!target.querySelector(".privacy-guard-search-badge")) {
-				const badge = document.createElement("span");
-				badge.className = "privacy-guard-search-badge";
-				badge.textContent = this.t("passwordRequired");
-				target.appendChild(badge);
+				target.createSpan({ cls: "privacy-guard-search-badge", text: this.t("passwordRequired") });
 			}
 		});
 	}
@@ -828,33 +813,24 @@ class PatternInput {
 
 	constructor(parent: HTMLElement, hint: string, onComplete?: (pattern: number[]) => void) {
 		this.onComplete = onComplete;
-		const wrapper = document.createElement("div");
-		wrapper.className = "tag-lock-pattern-wrapper";
-		const hintEl = document.createElement("p");
-		hintEl.className = "tag-lock-pattern-hint";
-		hintEl.textContent = hint;
-		this.board = document.createElement("div");
-		this.board.className = "tag-lock-pattern-board";
-		this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-		this.svg.classList.add("tag-lock-pattern-lines");
-		this.svg.setAttribute("viewBox", "0 0 300 300");
-		this.svg.setAttribute("aria-hidden", "true");
-		this.board.appendChild(this.svg);
+		const wrapper = parent.createDiv({ cls: "tag-lock-pattern-wrapper" });
+		wrapper.createEl("p", { cls: "tag-lock-pattern-hint", text: hint });
+		this.board = wrapper.createDiv({ cls: "tag-lock-pattern-board" });
+		this.svg = this.board.createSvg("svg", {
+			cls: "tag-lock-pattern-lines",
+			attr: { viewBox: "0 0 300 300", "aria-hidden": "true" },
+		});
 		for (let index = 0; index < 9; index++) {
-			const node = document.createElement("button");
-			node.type = "button";
-			node.className = "tag-lock-pattern-node";
-			node.dataset.index = String(index);
-			node.setAttribute("aria-label", String(index + 1));
+			const node = this.board.createEl("button", {
+				cls: "tag-lock-pattern-node",
+				attr: { type: "button", "data-index": String(index), "aria-label": String(index + 1) },
+			});
 			this.nodes.push(node);
-			this.board.appendChild(node);
 		}
 		this.board.addEventListener("pointerdown", (event) => this.start(event));
 		this.board.addEventListener("pointermove", (event) => this.move(event));
 		this.board.addEventListener("pointerup", (event) => this.end(event));
 		this.board.addEventListener("pointercancel", (event) => this.end(event));
-		wrapper.append(hintEl, this.board);
-		parent.appendChild(wrapper);
 	}
 
 	getPattern(): number[] {
@@ -906,7 +882,7 @@ class PatternInput {
 				nearest = index;
 			}
 		}
-		if (nearest < 0 || distance > Math.min(cellWidth, cellHeight) * 0.42 || this.pattern.includes(nearest)) return;
+		if (nearest < 0 || distance > Math.min(cellWidth, cellHeight) * 0.42 || this.pattern.indexOf(nearest) >= 0) return;
 		this.pattern.push(nearest);
 		this.nodes[nearest].classList.add("is-selected");
 		this.renderLines();
@@ -915,11 +891,8 @@ class PatternInput {
 	private renderLines(): void {
 		while (this.svg.firstChild) this.svg.removeChild(this.svg.firstChild);
 		if (this.pattern.length < 2) return;
-		const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
 		const points = this.pattern.map((index) => `${(index % 3 + 0.5) * 100},${(Math.floor(index / 3) + 0.5) * 100}`).join(" ");
-		polyline.setAttribute("points", points);
-		polyline.classList.add("tag-lock-pattern-polyline");
-		this.svg.appendChild(polyline);
+		this.svg.createSvg("polyline", { cls: "tag-lock-pattern-polyline", attr: { points } });
 	}
 }
 
@@ -941,7 +914,7 @@ class UnlockModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.createEl("h2", { text: this.plugin.t("needPassword") });
+		new Setting(contentEl).setName(this.plugin.t("needPassword")).setHeading();
 		contentEl.createEl("p", { text: this.reason });
 		const hint = this.plugin.settings.passwordHint.trim();
 		if (hint) contentEl.createEl("p", { cls: "tag-lock-password-hint", text: `${this.plugin.t("passwordHintLabel")}: ${hint}` });
@@ -1118,7 +1091,9 @@ class CredentialSetupModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.createEl("h2", { text: this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential") });
+		new Setting(contentEl)
+			.setName(this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential"))
+			.setHeading();
 		if (this.plugin.settings.authMethod === "pattern") {
 			this.renderPatternSetup(contentEl);
 			return;
@@ -1170,6 +1145,36 @@ class CredentialSetupModal extends Modal {
 	}
 }
 
+class ResetCredentialsConfirmModal extends Modal {
+	private readonly plugin: PrivacyGuardPlugin;
+	private readonly onConfirm: () => void;
+
+	constructor(app: App, plugin: PrivacyGuardPlugin, onConfirm: () => void) {
+		super(app);
+		this.plugin = plugin;
+		this.onConfirm = onConfirm;
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		new Setting(contentEl).setName(this.plugin.t("resetAllCredentials")).setHeading();
+		contentEl.createEl("p", { text: this.plugin.t("resetAllCredentialsConfirm") });
+		const actions = contentEl.createDiv("tag-lock-modal-actions");
+		const cancel = actions.createEl("button", { text: this.plugin.t("cancel") });
+		const confirm = actions.createEl("button", { text: this.plugin.t("resetAllCredentials"), cls: "mod-warning" });
+		cancel.addEventListener("click", () => this.close());
+		confirm.addEventListener("click", () => {
+			this.close();
+			this.onConfirm();
+		});
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
+}
+
 class PrivacyGuardSettingTab extends PluginSettingTab {
 	private readonly plugin: PrivacyGuardPlugin;
 
@@ -1179,13 +1184,17 @@ class PrivacyGuardSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
+		this.render();
+	}
+
+	private render(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 		if (this.plugin.settings.protectionEnabled && this.plugin.settings.protectSettings && this.plugin.hasCredential() && !this.plugin.isUnlocked()) {
 			this.renderLockedSettings(containerEl);
 			return;
 		}
-		containerEl.createEl("h2", { text: this.plugin.t("tagLock") });
+		new Setting(containerEl).setName(this.plugin.t("tagLock")).setHeading();
 
 		this.addHeading(containerEl, "categoryPreferences");
 		this.addToggle(containerEl, this.plugin.t("protectionEnabledName"), this.plugin.t("protectionEnabledDesc"), "protectionEnabled");
@@ -1200,7 +1209,7 @@ class PrivacyGuardSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.language = value as LanguageMode;
 					await this.plugin.saveSettings();
-					this.display();
+					this.render();
 				}));
 
 		this.addHeading(containerEl, "categoryProtectionRules");
@@ -1223,7 +1232,7 @@ class PrivacyGuardSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.authMethod = value as AuthMethod;
 					await this.plugin.saveSettings();
-					this.display();
+					this.render();
 				}));
 		new Setting(containerEl)
 			.setName(this.plugin.hasCredential() ? this.plugin.t("changeCredential") : this.plugin.t("setupCredential"))
@@ -1234,13 +1243,13 @@ class PrivacyGuardSettingTab extends PluginSettingTab {
 				.onClick(() => new CredentialSetupModal(this.app, this.plugin).open()))
 			.addButton((button) => button
 				.setButtonText(this.plugin.t("resetAllCredentials"))
-				.setWarning()
-				.onClick(async () => {
-					if (!window.confirm(this.plugin.t("resetAllCredentialsConfirm"))) return;
-					await this.plugin.resetAllCredentials();
-					new Notice(this.plugin.t("resetAllCredentialsDone"));
-					this.display();
-				}));
+				.setDestructive()
+				.onClick(() => new ResetCredentialsConfirmModal(this.app, this.plugin, () => {
+					void this.plugin.resetAllCredentials().then(() => {
+						new Notice(this.plugin.t("resetAllCredentialsDone"));
+						this.render();
+					});
+				}).open()));
 		new Setting(containerEl)
 			.setName(this.plugin.t("passwordHintName"))
 			.setDesc(this.plugin.t("passwordHintDesc"))
@@ -1283,14 +1292,14 @@ class PrivacyGuardSettingTab extends PluginSettingTab {
 	}
 
 	private renderLockedSettings(container: HTMLElement): void {
-		container.createEl("h2", { text: this.plugin.t("settingsLocked") });
+		new Setting(container).setName(this.plugin.t("settingsLocked")).setHeading();
 		container.createEl("p", { text: this.plugin.t("settingsReason") });
 		new Setting(container)
 			.addButton((button) => button
 				.setButtonText(this.plugin.t("unlockButton"))
 				.setCta()
 				.onClick(async () => {
-					if (await this.plugin.requestUnlock(this.plugin.t("settingsReason"), false)) this.display();
+					if (await this.plugin.requestUnlock(this.plugin.t("settingsReason"), false)) this.render();
 				}));
 	}
 
