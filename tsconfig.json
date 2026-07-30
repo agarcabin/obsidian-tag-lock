@@ -1,0 +1,26 @@
+{
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"obsidian": ["../obsdian-tag-to-page/node_modules/obsidian"]
+		},
+		"typeRoots": ["../obsdian-tag-to-page/node_modules/@types", "../obsdian-tag-to-page/node_modules/obsidian"],
+		"inlineSourceMap": true,
+		"inlineSources": true,
+		"module": "ESNext",
+		"target": "es6",
+		"allowJs": false,
+		"noImplicitAny": true,
+		"strictFunctionTypes": true,
+		"strictNullChecks": true,
+		"noImplicitReturns": true,
+		"noImplicitThis": true,
+		"noUnusedLocals": false,
+		"moduleResolution": "node",
+		"importHelpers": false,
+		"downlevelIteration": true,
+		"esModuleInterop": true,
+		"lib": ["dom", "es5", "scripthost", "es2015"]
+	},
+	"include": ["**/*.ts"]
+}

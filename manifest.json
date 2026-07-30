@@ -1,0 +1,10 @@
+{
+	"id": "tag-lock",
+	"name": "Tag Lock",
+	"version": "1.0.0",
+	"minAppVersion": "1.4.0",
+	"description": "Password-gate notes when configured privacy tags or folders are detected.",
+	"author": "A Qiong",
+	"authorUrl": "https://github.com/agarcabin",
+	"isDesktopOnly": false
+}
