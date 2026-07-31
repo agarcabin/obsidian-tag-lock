@@ -1,10 +1,10 @@
 {
 	"compilerOptions": {
 		"baseUrl": ".",
-		"paths": {
-			"obsidian": ["../obsdian-tag-to-page/node_modules/obsidian"]
-		},
-		"typeRoots": ["../obsdian-tag-to-page/node_modules/@types", "../obsdian-tag-to-page/node_modules/obsidian"],
+	"paths": {
+		"obsidian": ["node_modules/obsidian"]
+	},
+	"typeRoots": ["node_modules/@types", "node_modules/obsidian"],
 		"inlineSourceMap": true,
 		"inlineSources": true,
 		"module": "ESNext",

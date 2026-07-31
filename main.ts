@@ -198,8 +198,9 @@ async function hashPassword(password: string, salt: string): Promise<string> {
 }
 
 function bytesToHex(bytes: Uint8Array): string {
+	const hex = "0123456789abcdef";
 	let result = "";
-	for (const byte of bytes) result += byte.toString(16).padStart(2, "0");
+	for (const byte of bytes) result += hex[(byte >> 4) & 0x0f] + hex[byte & 0x0f];
 	return result;
 }
 
@@ -568,8 +569,8 @@ export default class PrivacyGuardPlugin extends Plugin {
 		if (!overlay) {
 			const createdOverlay = container.createDiv({ cls: "privacy-guard-view-overlay", attr: { "aria-label": this.t("pageLocked") } });
 			const card = createdOverlay.createDiv({ cls: "privacy-guard-lock-card" });
-			const title = card.createEl("h3", { text: this.t("pageLocked") });
-			const description = card.createEl("p", { cls: "privacy-guard-lock-path", text: path });
+			card.createEl("h3", { text: this.t("pageLocked") });
+			card.createEl("p", { cls: "privacy-guard-lock-path", text: path });
 			const button = card.createEl("button", { cls: "mod-cta", text: this.t("unlockButton") });
 			button.addEventListener("click", () => {
 				void this.requestUnlock(this.t("pageOpenReason")).then(() => this.refreshActiveView());

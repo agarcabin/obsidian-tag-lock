@@ -63,7 +63,7 @@ Protected previews are covered with an opaque overlay and a blur effect. The con
 
 If enabled, the Tag Lock settings page itself requires verification. This prevents someone who can access your Obsidian settings from simply disabling the protection rules or changing the credentials.
 
-On Obsidian 1.13 and later, Tag Lock exposes its settings through Obsidian's declarative settings API, so settings can be found using the settings search. Older supported Obsidian versions continue to use the compatible traditional settings view.
+Tag Lock requires Obsidian 1.13.0 or later. It exposes its settings through Obsidian's declarative settings API, so settings can be found using the settings search.
 
 ## Default protection rules
 
@@ -195,7 +195,7 @@ Tag Lock 提供了较细的锁定控制：
 
 开启“Tag Lock 设置页面保护”后，进入插件设置也需要验证。这样别人即使能打开 Obsidian 设置，也不能直接关闭保护规则、修改锁定策略或更换凭据。
 
-在 Obsidian 1.13 及以上版本中，Tag Lock 使用 Obsidian 的声明式设置接口，设置项目可以通过设置页面的搜索功能查找。较早的受支持版本继续使用兼容的传统设置页面。
+Tag Lock 要求 Obsidian 1.13.0 或更高版本，并使用 Obsidian 的声明式设置接口，因此设置项目可以通过设置页面的搜索功能查找。
 
 ## 首次使用默认设置
 
