@@ -153,8 +153,7 @@ function uniqueStrings(values, normalizer) {
   const seen = /* @__PURE__ */ new Set();
   for (const value of values) {
     const normalized = normalizer(value);
-    if (!normalized || seen.has(normalized))
-      continue;
+    if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
     result.push(value.trim());
   }
@@ -171,8 +170,7 @@ async function hashPassword(password, salt) {
 function bytesToHex(bytes) {
   const hex = "0123456789abcdef";
   let result = "";
-  for (const byte of bytes)
-    result += hex[byte >> 4 & 15] + hex[byte & 15];
+  for (const byte of bytes) result += hex[byte >> 4 & 15] + hex[byte & 15];
   return result;
 }
 var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
@@ -218,8 +216,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
       this.refreshActiveView();
     }));
     this.registerDomEvent(document, "visibilitychange", () => {
-      if (this.settings.lockOnBackground && document.hidden)
-        void this.lockAll();
+      if (this.settings.lockOnBackground && document.hidden) void this.lockAll();
     });
     this.registerMarkdownPostProcessor((element, context) => this.protectPreview(element, context));
     this.app.workspace.onLayoutReady(() => {
@@ -229,10 +226,8 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     });
   }
   getUiLanguage() {
-    if (this.settings.language === "zh")
-      return "zh";
-    if (this.settings.language === "en")
-      return "en";
+    if (this.settings.language === "zh") return "zh";
+    if (this.settings.language === "en") return "en";
     return navigator.language.toLocaleLowerCase().startsWith("zh") ? "zh" : "en";
   }
   t(key) {
@@ -315,8 +310,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     return Boolean(this.passwordHash && this.passwordSalt);
   }
   async verifyPassword(password) {
-    if (!this.hasPassword())
-      return false;
+    if (!this.hasPassword()) return false;
     return await hashPassword(password, this.passwordSalt) === this.passwordHash;
   }
   hasPattern() {
@@ -326,18 +320,15 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     return this.settings.authMethod === "pattern" ? this.hasPattern() : this.hasPassword();
   }
   async verifyPattern(pattern) {
-    if (!this.hasPattern())
-      return false;
+    if (!this.hasPattern()) return false;
     return await hashPassword(pattern.join(","), this.patternSalt) === this.patternHash;
   }
   async verifyCredential(value) {
     return this.settings.authMethod === "pattern" ? Array.isArray(value) && await this.verifyPattern(value) : typeof value === "string" && await this.verifyPassword(value);
   }
   isUnlocked() {
-    if (this.unlockedUntil === null)
-      return false;
-    if (this.unlockedUntil === 0 || this.unlockedUntil > Date.now())
-      return true;
+    if (this.unlockedUntil === null) return false;
+    if (this.unlockedUntil === 0 || this.unlockedUntil > Date.now()) return true;
     this.unlockedUntil = null;
     this.searchPromptKeys.clear();
     void this.persistUnlockState(null);
@@ -363,8 +354,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     new import_obsidian.Notice(this.t("lockedNotice"));
   }
   isAuthBlocked() {
-    if (this.authBlockedUntil === 0)
-      return false;
+    if (this.authBlockedUntil === 0) return false;
     if (this.authBlockedUntil <= Date.now()) {
       this.authBlockedUntil = 0;
       return false;
@@ -376,8 +366,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
   }
   recordFailedAttempt() {
     this.failedAttempts += 1;
-    if (this.failedAttempts % 5 !== 0)
-      return;
+    if (this.failedAttempts % 5 !== 0) return;
     this.authBlockedUntil = Date.now() + 3e4;
     new import_obsidian.Notice(this.t("authBlocked").replace("{seconds}", "30"));
   }
@@ -390,31 +379,26 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     const now = Date.now();
     this.promptOpeningTimes = this.promptOpeningTimes.filter((openedAt) => now - openedAt < 1e3);
     this.promptOpeningTimes.push(now);
-    if (this.promptOpeningTimes.length < 3)
-      return false;
+    if (this.promptOpeningTimes.length < 3) return false;
     this.promptOpeningTimes = [];
     (_a = this.app.workspace.getMostRecentLeaf()) == null ? void 0 : _a.detach();
     new import_obsidian.Notice(this.t("rapidPromptClose"));
     return true;
   }
   async requestUnlock(reason, applyFailureAction = true, forcePrompt = false) {
-    if (!forcePrompt && this.isUnlocked())
-      return true;
+    if (!forcePrompt && this.isUnlocked()) return true;
     if (this.isAuthBlocked()) {
       new import_obsidian.Notice(this.t("authBlocked").replace("{seconds}", String(this.getRemainingAuthBlockSeconds())));
       return false;
     }
-    if (this.promptPromise)
-      return this.promptPromise;
-    if (this.notePromptOpening())
-      return false;
+    if (this.promptPromise) return this.promptPromise;
+    if (this.notePromptOpening()) return false;
     const prompt = new Promise((resolve) => {
       new UnlockModal(this.app, this, reason, resolve).open();
     });
     this.promptPromise = prompt.then(
       (result) => {
-        if (!result && applyFailureAction)
-          this.applyFailureAction();
+        if (!result && applyFailureAction) this.applyFailureAction();
         this.promptPromise = null;
         return result;
       },
@@ -437,8 +421,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     };
   }
   async persistUnlockState(value) {
-    if (value === null)
-      this.unlockedUntil = null;
+    if (value === null) this.unlockedUntil = null;
     if (this.settings.lockOnRestart || !this.settings.persistUnlockAcrossRestart) {
       await this.saveData(this.toStoredData());
       return;
@@ -447,8 +430,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
   }
   scheduleUnlockExpiry() {
     this.clearUnlockTimer();
-    if (this.unlockedUntil === null || this.unlockedUntil === 0)
-      return;
+    if (this.unlockedUntil === null || this.unlockedUntil === 0) return;
     const remaining = Math.max(0, this.unlockedUntil - Date.now());
     this.unlockTimer = window.setTimeout(() => {
       this.unlockTimer = null;
@@ -461,8 +443,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     }, Math.min(remaining, 2147e6));
   }
   clearUnlockTimer() {
-    if (this.unlockTimer === null)
-      return;
+    if (this.unlockTimer === null) return;
     window.clearTimeout(this.unlockTimer);
     this.unlockTimer = null;
   }
@@ -494,8 +475,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     }
     if (this.settings.failureAction === "previous" && this.previousOpenedPath) {
       const previous = this.getFileByPath(this.previousOpenedPath);
-      if (previous)
-        void this.app.workspace.getLeaf(false).openFile(previous);
+      if (previous) void this.app.workspace.getLeaf(false).openFile(previous);
     }
   }
   refreshActiveView() {
@@ -530,11 +510,9 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
       });
       overlay = createdOverlay;
     }
-    if (!overlay)
-      return;
+    if (!overlay) return;
     const description = overlay.querySelector(".privacy-guard-lock-path");
-    if (description)
-      description.textContent = path;
+    if (description) description.textContent = path;
   }
   removeLockOverlays() {
     this.removeViewLockOverlays();
@@ -549,11 +527,9 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     container.classList.remove("privacy-guard-relative");
   }
   protectPreview(element, context) {
-    if (!this.settings.protectionEnabled || !this.settings.protectPreview)
-      return;
+    if (!this.settings.protectionEnabled || !this.settings.protectPreview) return;
     const file = this.getFileByPath(context.sourcePath);
-    if (!file || !this.isProtectedFile(file))
-      return;
+    if (!file || !this.isProtectedFile(file)) return;
     element.dataset.tagLockPreviewPath = file.path;
     if (this.isUnlocked()) {
       this.removePreviewOverlay(element);
@@ -562,8 +538,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     this.addPreviewOverlay(element);
   }
   addPreviewOverlay(element) {
-    if (element.querySelector(".privacy-guard-preview-overlay"))
-      return;
+    if (element.querySelector(".privacy-guard-preview-overlay")) return;
     element.classList.add("privacy-guard-preview-relative");
     const overlay = element.createDiv({ cls: "privacy-guard-preview-overlay" });
     overlay.createSpan({ text: this.t("protectedPreview") });
@@ -579,14 +554,11 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
       const path = element.dataset.tagLockPreviewPath;
       const file = path ? this.getFileByPath(path) : null;
       const shouldProtect = locked && file && this.isProtectedFile(file);
-      if (shouldProtect)
-        this.addPreviewOverlay(element);
-      else
-        this.removePreviewOverlay(element);
+      if (shouldProtect) this.addPreviewOverlay(element);
+      else this.removePreviewOverlay(element);
     });
     document.querySelectorAll(".privacy-guard-preview-relative").forEach((element) => {
-      if (!element.dataset.tagLockPreviewPath)
-        this.removePreviewOverlay(element);
+      if (!element.dataset.tagLockPreviewPath) this.removePreviewOverlay(element);
     });
     this.refreshBacklinkOverlays();
   }
@@ -606,8 +578,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     for (const leaf of this.app.workspace.getLeavesOfType("backlink")) {
       const container = leaf.view.containerEl;
       liveContainers.add(container);
-      if (this.backlinkObservers.has(container))
-        continue;
+      if (this.backlinkObservers.has(container)) continue;
       const observer = new MutationObserver(() => this.refreshBacklinkOverlays());
       observer.observe(container, { childList: true, subtree: true });
       this.backlinkObservers.set(container, observer);
@@ -638,8 +609,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
   }
   addBacklinkOverlay(container) {
     container.classList.add("privacy-guard-backlink-relative");
-    if (container.querySelector(".privacy-guard-backlink-overlay"))
-      return;
+    if (container.querySelector(".privacy-guard-backlink-overlay")) return;
     const overlay = container.createDiv({ cls: "privacy-guard-backlink-overlay" });
     overlay.createSpan({ text: this.t("protectedBacklinks") });
     const button = overlay.createEl("button", { cls: "mod-cta", text: this.t("enterPassword") });
@@ -663,8 +633,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
     for (const leaf of this.app.workspace.getLeavesOfType("search")) {
       const container = leaf.view.containerEl;
       liveContainers.add(container);
-      if (this.searchObservers.has(container))
-        continue;
+      if (this.searchObservers.has(container)) continue;
       const observer = new MutationObserver(() => this.inspectSearchResults(container));
       observer.observe(container, {
         childList: true,
@@ -686,24 +655,19 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
   }
   inspectSearchResults(container) {
     var _a;
-    if (!this.settings.protectionEnabled || !this.settings.protectSearch || this.isUnlocked())
-      return;
+    if (!this.settings.protectionEnabled || !this.settings.protectSearch || this.isUnlocked()) return;
     const paths = /* @__PURE__ */ new Set();
     container.querySelectorAll("[data-path]").forEach((element) => {
       const path = element.getAttribute("data-path");
-      if (!path)
-        return;
+      if (!path) return;
       const file = this.getFileByPath(path);
-      if (file && this.isProtectedFile(file))
-        paths.add(file.path);
+      if (file && this.isProtectedFile(file)) paths.add(file.path);
     });
-    if (paths.size === 0)
-      return;
+    if (paths.size === 0) return;
     const queryInput = container.querySelector("input.search-input, input[type='search']");
     const query = (_a = queryInput == null ? void 0 : queryInput.value.trim()) != null ? _a : "";
     const key = `${query}|${Array.from(paths).sort().join("|")}`;
-    if (this.searchPromptKeys.has(key))
-      return;
+    if (this.searchPromptKeys.has(key)) return;
     this.searchPromptKeys.add(key);
     void this.requestUnlock(this.t("searchProtected")).then((unlocked) => {
       if (unlocked) {
@@ -716,8 +680,7 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
   blockSearchResults(container, paths) {
     container.querySelectorAll("[data-path]").forEach((element) => {
       const path = element.getAttribute("data-path");
-      if (!path || !paths.has(path))
-        return;
+      if (!path || !paths.has(path)) return;
       const row = element.closest(".tree-item, .search-result-file-title");
       const target = row != null ? row : element;
       target.classList.add("privacy-guard-search-blocked");
@@ -734,31 +697,24 @@ var PrivacyGuardPlugin = class extends import_obsidian.Plugin {
   }
   isProtectedFile(file) {
     var _a, _b, _c, _d;
-    if (!this.settings.protectionEnabled)
-      return false;
-    if (file.extension !== "md")
-      return false;
+    if (!this.settings.protectionEnabled) return false;
+    if (file.extension !== "md") return false;
     const normalizedPath = file.path.replace(/\\/g, "/");
     const folderMatch = this.settings.protectedFolders.some((folder) => {
       const normalizedFolder = normalizeFolder(folder);
       return normalizedFolder && (normalizedPath === normalizedFolder || normalizedPath.startsWith(`${normalizedFolder}/`));
     });
-    if (folderMatch)
-      return true;
+    if (folderMatch) return true;
     const protectedTags = new Set(this.settings.protectedTags.map(normalizeTag));
-    if (this.settings.protectTagNamedPages && protectedTags.has(normalizeTag(file.basename)))
-      return true;
+    if (this.settings.protectTagNamedPages && protectedTags.has(normalizeTag(file.basename))) return true;
     const tags = (_b = (_a = this.app.metadataCache.getFileCache(file)) == null ? void 0 : _a.tags) != null ? _b : [];
-    if (tags.some((tag) => protectedTags.has(normalizeTag(tag.tag))))
-      return true;
-    if (!this.settings.protectTagNamedLinks)
-      return false;
+    if (tags.some((tag) => protectedTags.has(normalizeTag(tag.tag)))) return true;
+    if (!this.settings.protectTagNamedLinks) return false;
     const links = (_d = (_c = this.app.metadataCache.getFileCache(file)) == null ? void 0 : _c.links) != null ? _d : [];
     return links.some((link) => {
       var _a2, _b2;
       const linkTarget = link.link.split("#")[0].split("|")[0].trim();
-      if (!linkTarget)
-        return false;
+      if (!linkTarget) return false;
       const linkedFile = this.app.metadataCache.getFirstLinkpathDest(linkTarget, file.path);
       const linkedBasename = (_b2 = linkedFile == null ? void 0 : linkedFile.basename) != null ? _b2 : (_a2 = linkTarget.replace(/\\/g, "/").split("/").pop()) == null ? void 0 : _a2.replace(/\.md$/i, "");
       return Boolean(linkedBasename && protectedTags.has(normalizeTag(linkedBasename)));
@@ -813,20 +769,16 @@ var PatternInput = class {
     this.addNearest(event);
   }
   move(event) {
-    if (!this.drawing)
-      return;
+    if (!this.drawing) return;
     event.preventDefault();
     this.addNearest(event);
   }
   end(event) {
     var _a;
-    if (!this.drawing)
-      return;
+    if (!this.drawing) return;
     this.drawing = false;
-    if (this.board.hasPointerCapture(event.pointerId))
-      this.board.releasePointerCapture(event.pointerId);
-    if (this.pattern.length >= 4)
-      (_a = this.onComplete) == null ? void 0 : _a.call(this, this.getPattern());
+    if (this.board.hasPointerCapture(event.pointerId)) this.board.releasePointerCapture(event.pointerId);
+    if (this.pattern.length >= 4) (_a = this.onComplete) == null ? void 0 : _a.call(this, this.getPattern());
   }
   addNearest(event) {
     const rect = this.board.getBoundingClientRect();
@@ -845,17 +797,14 @@ var PatternInput = class {
         nearest = index;
       }
     }
-    if (nearest < 0 || distance > Math.min(cellWidth, cellHeight) * 0.42 || this.pattern.indexOf(nearest) >= 0)
-      return;
+    if (nearest < 0 || distance > Math.min(cellWidth, cellHeight) * 0.42 || this.pattern.indexOf(nearest) >= 0) return;
     this.pattern.push(nearest);
     this.nodes[nearest].classList.add("is-selected");
     this.renderLines();
   }
   renderLines() {
-    while (this.svg.firstChild)
-      this.svg.removeChild(this.svg.firstChild);
-    if (this.pattern.length < 2)
-      return;
+    while (this.svg.firstChild) this.svg.removeChild(this.svg.firstChild);
+    if (this.pattern.length < 2) return;
     const points = this.pattern.map((index) => `${(index % 3 + 0.5) * 100},${(Math.floor(index / 3) + 0.5) * 100}`).join(" ");
     this.svg.createSvg("polyline", { cls: "tag-lock-pattern-polyline", attr: { points } });
   }
@@ -876,8 +825,7 @@ var UnlockModal = class extends import_obsidian.Modal {
     new import_obsidian.Setting(contentEl).setName(this.plugin.t("needPassword")).setHeading();
     contentEl.createEl("p", { text: this.reason });
     const hint = this.plugin.settings.passwordHint.trim();
-    if (hint)
-      contentEl.createEl("p", { cls: "tag-lock-password-hint", text: `${this.plugin.t("passwordHintLabel")}: ${hint}` });
+    if (hint) contentEl.createEl("p", { cls: "tag-lock-password-hint", text: `${this.plugin.t("passwordHintLabel")}: ${hint}` });
     if (!this.plugin.hasCredential()) {
       contentEl.createEl("p", { text: this.plugin.t("firstUse") });
       this.renderCredentialSetup(contentEl);
@@ -902,8 +850,7 @@ var UnlockModal = class extends import_obsidian.Modal {
       input.addEventListener("input", () => void this.tryImmediatePasswordUnlock(input.value));
     }
     input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter")
-        void this.tryUnlock(input.value, error);
+      if (event.key === "Enter") void this.tryUnlock(input.value, error);
     });
     window.setTimeout(() => input.focus(), 0);
   }
@@ -982,8 +929,7 @@ var UnlockModal = class extends import_obsidian.Modal {
     window.setTimeout(() => password.focus(), 0);
   }
   async tryUnlock(value, error) {
-    if (this.settled || this.credentialChecking)
-      return;
+    if (this.settled || this.credentialChecking) return;
     if (this.plugin.isAuthBlocked()) {
       error.textContent = this.plugin.t("authBlocked").replace("{seconds}", String(this.plugin.getRemainingAuthBlockSeconds()));
       return;
@@ -1004,8 +950,7 @@ var UnlockModal = class extends import_obsidian.Modal {
     await this.tryImmediateCredential(value);
   }
   async tryImmediateCredential(value) {
-    if (!value || this.settled || this.immediateChecking || this.plugin.isAuthBlocked())
-      return;
+    if (!value || this.settled || this.immediateChecking || this.plugin.isAuthBlocked()) return;
     this.immediateChecking = true;
     const valid = await this.plugin.verifyCredential(value);
     if (valid && !this.settled) {
@@ -1020,8 +965,7 @@ var UnlockModal = class extends import_obsidian.Modal {
     this.finish(false);
   }
   finish(result) {
-    if (this.settled)
-      return;
+    if (this.settled) return;
     this.settled = true;
     this.resolveResult(result);
     this.close();
@@ -1124,8 +1068,7 @@ var PrivacyGuardSettingTab = class extends import_obsidian.PluginSettingTab {
           desc: this.plugin.t("settingsReason"),
           render: (setting) => {
             setting.addButton((button) => button.setButtonText(this.plugin.t("unlockButton")).setCta().onClick(async () => {
-              if (await this.plugin.requestUnlock(this.plugin.t("settingsReason"), false))
-                this.update();
+              if (await this.plugin.requestUnlock(this.plugin.t("settingsReason"), false)) this.update();
             }));
           }
         }]
@@ -1265,88 +1208,71 @@ var PrivacyGuardSettingTab = class extends import_obsidian.PluginSettingTab {
   async setControlValue(key, value) {
     switch (key) {
       case "protectedTags":
-        if (typeof value !== "string")
-          return;
+        if (typeof value !== "string") return;
         this.plugin.settings.protectedTags = value.split(/\r?\n/);
         break;
       case "protectedFolders":
-        if (typeof value !== "string")
-          return;
+        if (typeof value !== "string") return;
         this.plugin.settings.protectedFolders = value.split(/\r?\n/);
         break;
       case "unlockMinutes":
-        if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
-          return;
+        if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return;
         this.plugin.settings.unlockMinutes = Math.floor(value);
         break;
       case "protectionEnabled":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.protectionEnabled = value;
         break;
       case "language":
-        if (value !== "auto" && value !== "zh" && value !== "en")
-          return;
+        if (value !== "auto" && value !== "zh" && value !== "en") return;
         this.plugin.settings.language = value;
         break;
       case "protectTagNamedLinks":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.protectTagNamedLinks = value;
         break;
       case "protectTagNamedPages":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.protectTagNamedPages = value;
         break;
       case "protectSearch":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.protectSearch = value;
         break;
       case "protectPreview":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.protectPreview = value;
         break;
       case "protectSettings":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.protectSettings = value;
         break;
       case "authMethod":
-        if (value !== "password" && value !== "pattern")
-          return;
+        if (value !== "password" && value !== "pattern") return;
         this.plugin.settings.authMethod = value;
         break;
       case "passwordHint":
-        if (typeof value !== "string")
-          return;
+        if (typeof value !== "string") return;
         this.plugin.settings.passwordHint = value.trim();
         break;
       case "unlockOnCorrectCredential":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.unlockOnCorrectCredential = value;
         break;
       case "failureAction":
-        if (value !== "previous" && value !== "close" && value !== "none")
-          return;
+        if (value !== "previous" && value !== "close" && value !== "none") return;
         this.plugin.settings.failureAction = value;
         break;
       case "lockOnRestart":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.lockOnRestart = value;
         break;
       case "lockOnBackground":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.lockOnBackground = value;
         break;
       case "forcePasswordEveryAccess":
-        if (typeof value !== "boolean")
-          return;
+        if (typeof value !== "boolean") return;
         this.plugin.settings.forcePasswordEveryAccess = value;
         break;
       default:
@@ -1408,8 +1334,7 @@ var PrivacyGuardSettingTab = class extends import_obsidian.PluginSettingTab {
     this.addHeading(containerEl, "categoryLockRules");
     new import_obsidian.Setting(containerEl).setName(this.plugin.t("unlockDurationName")).setDesc(this.plugin.t("unlockDurationDesc")).addText((text) => text.setValue(String(this.plugin.settings.unlockMinutes)).setPlaceholder("30").onChange(async (value) => {
       const parsed = Number(value.trim());
-      if (!Number.isFinite(parsed) || parsed < 0)
-        return;
+      if (!Number.isFinite(parsed) || parsed < 0) return;
       this.plugin.settings.unlockMinutes = Math.floor(parsed);
       await this.plugin.saveSettings();
     }));
@@ -1421,8 +1346,7 @@ var PrivacyGuardSettingTab = class extends import_obsidian.PluginSettingTab {
     new import_obsidian.Setting(container).setName(this.plugin.t("settingsLocked")).setHeading();
     container.createEl("p", { text: this.plugin.t("settingsReason") });
     new import_obsidian.Setting(container).addButton((button) => button.setButtonText(this.plugin.t("unlockButton")).setCta().onClick(async () => {
-      if (await this.plugin.requestUnlock(this.plugin.t("settingsReason"), false))
-        this.render();
+      if (await this.plugin.requestUnlock(this.plugin.t("settingsReason"), false)) this.render();
     }));
   }
   addHeading(container, key) {
