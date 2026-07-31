@@ -1,6 +1,8 @@
 [English](#english) | [简体中文](#简体中文)
 
-# English
+# Tag Lock
+
+## English
 
 ## When your notes are personal, opening Obsidian should not expose everything
 

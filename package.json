@@ -1,6 +1,6 @@
 {
 	"name": "tag-lock",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"private": true,
 	"description": "Obsidian plugin for password-gating notes by tag or folder.",
 	"scripts": {

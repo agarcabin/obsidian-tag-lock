@@ -1284,9 +1284,6 @@ var PrivacyGuardSettingTab = class extends import_obsidian.PluginSettingTab {
   isSettingsLocked() {
     return this.plugin.settings.protectionEnabled && this.plugin.settings.protectSettings && this.plugin.hasCredential() && !this.plugin.isUnlocked();
   }
-  display() {
-    this.render();
-  }
   render() {
     const { containerEl } = this;
     containerEl.empty();

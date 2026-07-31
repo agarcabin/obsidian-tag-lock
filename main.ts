@@ -1410,10 +1410,6 @@ class PrivacyGuardSettingTab extends PluginSettingTab {
 		return this.plugin.settings.protectionEnabled && this.plugin.settings.protectSettings && this.plugin.hasCredential() && !this.plugin.isUnlocked();
 	}
 
-	display(): void {
-		this.render();
-	}
-
 	private render(): void {
 		const { containerEl } = this;
 		containerEl.empty();
