@@ -1,127 +1,10 @@
-[English](#english) | [简体中文](#简体中文)
+<p>Language：<a href="#chinese">简体中文</a> | <a href="#english">English</a></p>
+
+---
+
+<a id="chinese"></a>
 
 # Tag Lock
-
-## English
-
-## When your notes are personal, opening Obsidian should not expose everything
-
-An Obsidian vault often contains much more than ordinary notes: private diary entries, relationship records, passwords, health details, financial thoughts, and unfinished ideas. The problem is not always a sophisticated attacker. Sometimes you simply hand your phone to a family member, colleague, or friend, and they open Obsidian out of curiosity. A normal page switch, search, preview, or backlink panel can reveal information before you have time to react.
-
-Tag Lock adds a lightweight privacy gate inside Obsidian. Mark a note with a protected tag such as `#隐私` or `#password`, and Tag Lock asks for verification before the protected content is shown. It is designed for the everyday “防君子” scenario: reducing accidental or curious viewing on a shared device without changing the Markdown files in your vault.
-
-## What makes Tag Lock different
-
-### Protect a page with a simple tag
-
-Add a protected tag anywhere in a note:
-
-```markdown
-Today I wrote something private. #隐私
-```
-
-You can configure multiple tags, one per line. This makes protection quick enough for diary writing, while still allowing you to organize different kinds of sensitive notes with tags such as `#隐私`, `#保密`, `#密码`, or `#medical`.
-
-### Protect more than direct page opening
-
-Tag Lock checks several ways in which private information can appear:
-
-- Opening a protected Markdown page.
-- Searching for protected files. Search results remain visible, but a protected result triggers verification and is blocked after an unsuccessful or cancelled attempt.
-- Rendering protected page previews.
-- Showing protected pages in backlinks panels.
-- Linking to a tag-named page, such as `[[隐私]]`, when tag-named wikilink protection is enabled.
-- Opening a page whose filename matches a protected tag, such as `隐私.md`, when tag-named page protection is enabled.
-- Accessing files inside configured protected folders.
-
-This distinction matters: protection is applied at the points where content could be exposed, not only after the note has already been opened.
-
-### Password or Android-style pattern unlock
-
-Choose the unlock method that feels natural for your device:
-
-- Password unlock.
-- Nine-dot pattern gesture, similar to Android screen unlock.
-
-The first credential setup dialog lets you switch between the two methods before saving. You can also change the credential later, reset both credentials, add a password hint, and choose whether a correct credential unlocks immediately or waits for the Unlock button.
-
-### Practical lock behavior for shared devices
-
-Tag Lock includes controls for the moments when privacy is most likely to be lost:
-
-- Set how long an unlock remains valid. `0` keeps it valid for the current Obsidian session.
-- Lock when Obsidian moves to the background.
-- Lock again after restarting Obsidian.
-- Require verification on every access, even when an earlier unlock is still valid.
-- After five consecutive failed attempts, pause credential input for 30 seconds.
-- If the unlock prompt is opened three times within one second, close the current tab. This helps prevent repeated prompt loops caused by rapid navigation or view refreshes.
-- Choose what happens after a wrong credential or cancellation: return to the previous page, close the current tab, or take no navigation action.
-
-### Preview masking is a real visual barrier
-
-Protected previews are covered with an opaque overlay and a blur effect. The content is not merely dimmed. The overlay is placed above the rendered preview, and it is removed after successful verification. The same protection model is used for backlinks previews so that sensitive text is not readable while browsing related notes.
-
-### Settings can be protected too
-
-If enabled, the Tag Lock settings page itself requires verification. This prevents someone who can access your Obsidian settings from simply disabling the protection rules or changing the credentials.
-
-Tag Lock requires Obsidian 1.13.0 or later. It exposes its settings through Obsidian's declarative settings API, so settings can be found using the settings search.
-
-## Default protection rules
-
-The first-use defaults are:
-
-- Protected tags: `#隐私` and `#密码`.
-- Protected folders: none.
-- Tag-named wikilink protection: enabled.
-- Tag-named page protection: enabled.
-- Search protection: enabled.
-- Page preview and backlinks protection: enabled.
-- Tag Lock settings protection: disabled.
-- Unlock method: password.
-- Unlock validity: 30 minutes.
-- Lock after restart: enabled.
-- Lock when entering the background: disabled.
-- Require verification on every access: disabled.
-- Immediate unlock after a correct credential: enabled.
-- Failed or cancelled verification: go to the previous page.
-
-All of these settings can be changed in Tag Lock settings. The protected tag and folder fields accept one entry per line.
-
-## Installation
-
-### From a GitHub Release
-
-Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/agarcabin/obsidian-tag-lock/releases/latest), then copy them into:
-
-```text
-<your-vault>/.obsidian/plugins/tag-lock/
-```
-
-Enable **Tag Lock** in Obsidian's Community plugins settings.
-
-### Manual development installation
-
-Clone the repository, install the development dependencies, and build the plugin:
-
-```bash
-npm install
-npm run build
-```
-
-Copy the generated `main.js`, `manifest.json`, and `styles.css` into the plugin directory above, then reload Obsidian.
-
-## Privacy and security scope
-
-Tag Lock does not encrypt or rewrite local Markdown files. Protected text remains readable to anyone who opens the files outside Obsidian, uses another tool, accesses the vault directly, or inspects an already unlocked Obsidian session. The credentials are stored as salted hashes for verification; this plugin is not intended to replace full-disk encryption, vault encryption, operating-system authentication, or a threat model involving an attacker with filesystem access.
-
-Use Tag Lock when the main risk is casual viewing on your phone or a shared computer. Use real encryption when the notes must remain protected even if the vault files are copied.
-
-## License
-
-Tag Lock is released under the [MIT License](LICENSE).
-
-# 简体中文
 
 ## 日记和隐私笔记，不应该因为别人打开 Obsidian 就全部暴露
 
@@ -252,3 +135,126 @@ Tag Lock 不会加密或改写本地 Markdown 文件。只要有人绕过 Obsidi
 ## 开源协议
 
 Tag Lock 使用 [MIT License](LICENSE) 开源。
+
+---
+
+<a id="english"></a>
+
+# Tag Lock
+
+## When your notes are personal, opening Obsidian should not expose everything
+
+An Obsidian vault often contains much more than ordinary notes: private diary entries, relationship records, passwords, health details, financial thoughts, and unfinished ideas. The problem is not always a sophisticated attacker. Sometimes you simply hand your phone to a family member, colleague, or friend, and they open Obsidian out of curiosity. A normal page switch, search, preview, or backlink panel can reveal information before you have time to react.
+
+Tag Lock adds a lightweight privacy gate inside Obsidian. Mark a note with a protected tag such as `#隐私` or `#password`, and Tag Lock asks for verification before the protected content is shown. It is designed for the everyday “防君子” scenario: reducing accidental or curious viewing on a shared device without changing the Markdown files in your vault.
+
+## What makes Tag Lock different
+
+### Protect a page with a simple tag
+
+Add a protected tag anywhere in a note:
+
+```markdown
+Today I wrote something private. #隐私
+```
+
+You can configure multiple tags, one per line. This makes protection quick enough for diary writing, while still allowing you to organize different kinds of sensitive notes with tags such as `#隐私`, `#保密`, `#密码`, or `#medical`.
+
+### Protect more than direct page opening
+
+Tag Lock checks several ways in which private information can appear:
+
+- Opening a protected Markdown page.
+- Searching for protected files. Search results remain visible, but a protected result triggers verification and is blocked after an unsuccessful or cancelled attempt.
+- Rendering protected page previews.
+- Showing protected pages in backlinks panels.
+- Linking to a tag-named page, such as `[[隐私]]`, when tag-named wikilink protection is enabled.
+- Opening a page whose filename matches a protected tag, such as `隐私.md`, when tag-named page protection is enabled.
+- Accessing files inside configured protected folders.
+
+This distinction matters: protection is applied at the points where content could be exposed, not only after the note has already been opened.
+
+### Password or Android-style pattern unlock
+
+Choose the unlock method that feels natural for your device:
+
+- Password unlock.
+- Nine-dot pattern gesture, similar to Android screen unlock.
+
+The first credential setup dialog lets you switch between the two methods before saving. You can also change the credential later, reset both credentials, add a password hint, and choose whether a correct credential unlocks immediately or waits for the Unlock button.
+
+### Practical lock behavior for shared devices
+
+Tag Lock includes controls for the moments when privacy is most likely to be lost:
+
+- Set how long an unlock remains valid. `0` keeps it valid for the current Obsidian session.
+- Lock when Obsidian moves to the background.
+- Lock again after restarting Obsidian.
+- Require verification on every access, even when an earlier unlock is still valid.
+- After five consecutive failed attempts, pause credential input for 30 seconds.
+- If the unlock prompt is opened three times within one second, close the current tab. This helps prevent repeated prompt loops caused by rapid navigation or view refreshes.
+- Choose what happens after a wrong credential or cancellation: return to the previous page, close the current tab, or take no navigation action.
+
+### Preview masking is a real visual barrier
+
+Protected previews are covered with an opaque overlay and a blur effect. The content is not merely dimmed. The overlay is placed above the rendered preview, and it is removed after successful verification. The same protection model is used for backlinks previews so that sensitive text is not readable while browsing related notes.
+
+### Settings can be protected too
+
+If enabled, the Tag Lock settings page itself requires verification. This prevents someone who can access your Obsidian settings from simply disabling the protection rules or changing the credentials.
+
+Tag Lock requires Obsidian 1.13.0 or later. It exposes its settings through Obsidian's declarative settings API, so settings can be found using the settings search.
+
+## Default protection rules
+
+The first-use defaults are:
+
+- Protected tags: `#隐私` and `#密码`.
+- Protected folders: none.
+- Tag-named wikilink protection: enabled.
+- Tag-named page protection: enabled.
+- Search protection: enabled.
+- Page preview and backlinks protection: enabled.
+- Tag Lock settings protection: disabled.
+- Unlock method: password.
+- Unlock validity: 30 minutes.
+- Lock after restart: enabled.
+- Lock when entering the background: disabled.
+- Require verification on every access: disabled.
+- Immediate unlock after a correct credential: enabled.
+- Failed or cancelled verification: go to the previous page.
+
+All of these settings can be changed in Tag Lock settings. The protected tag and folder fields accept one entry per line.
+
+## Installation
+
+### From a GitHub Release
+
+Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/agarcabin/obsidian-tag-lock/releases/latest), then copy them into:
+
+```text
+<your-vault>/.obsidian/plugins/tag-lock/
+```
+
+Enable **Tag Lock** in Obsidian's Community plugins settings.
+
+### Manual development installation
+
+Clone the repository, install the development dependencies, and build the plugin:
+
+```bash
+npm install
+npm run build
+```
+
+Copy the generated `main.js`, `manifest.json`, and `styles.css` into the plugin directory above, then reload Obsidian.
+
+## Privacy and security scope
+
+Tag Lock does not encrypt or rewrite local Markdown files. Protected text remains readable to anyone who opens the files outside Obsidian, uses another tool, accesses the vault directly, or inspects an already unlocked Obsidian session. The credentials are stored as salted hashes for verification; this plugin is not intended to replace full-disk encryption, vault encryption, operating-system authentication, or a threat model involving an attacker with filesystem access.
+
+Use Tag Lock when the main risk is casual viewing on your phone or a shared computer. Use real encryption when the notes must remain protected even if the vault files are copied.
+
+## License
+
+Tag Lock is released under the [MIT License](LICENSE).
